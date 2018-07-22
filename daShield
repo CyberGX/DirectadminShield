@@ -116,20 +116,20 @@ FORE_GREEN_COLOR='\033[1;32m'
             ssh_protocol=$(get_config_variable_space_based "Protocol" $ssh_config_path)
             ssh_password_authentication=$(get_config_variable_space_based "PasswordAuthentication" $ssh_config_path)
             ssh_banner=$(get_config_variable_space_based "Banner" $ssh_config_path)
-            ssh_banner=$(get_config_variable_space_based "Banner" $ssh_config_path)
+            ssh_use_dns=$(get_config_variable_space_based "UseDNS" $ssh_config_path)
             ssh_client_alive_interval=$(get_config_variable_space_based "ClientAliveInterval" $ssh_config_path)
             ssh_client_count_max=$(get_config_variable_space_based "ClientAliveCountMax" $ssh_config_path)
             
             echo "  * SSH config path :" $ssh_config_path
-            echo "  - Protocol :" $(recommander $(emptyMask $ssh_protocol "2,1") "2" "Set protocol to just 2.") 
+            echo "  - Protocol :" $(recommander $(emptyMask $ssh_protocol "2") "2" "Set protocol to just 2.") 
             echo "  - Port :" $(recommanderReverse $(emptyMask $ssh_port "22") "22" "Change default ssh port.")
             echo "  - PermitRootLogin :" $(recommander $(emptyMask $ssh_permit_root_login "yes") "no" "Disable login with username root.")
+            echo "  - Use DNS :" $(recommander $(emptyMask $ssh_use_dns "yes") "no" "set to no becuse lfd will be unable to track SSHD login failures")
             echo "  - PasswordAuthentication :" $(recommander $(emptyMask $ssh_password_authentication "yes") "no" "Disable PasswordAuthentication and force to login with key.")
             echo "  - Banner :" $(recommanderReverse $(emptyMask $ssh_banner "N/A") "N/A" "Set banner to prevent attacker.")
             echo "  - ClientAliveInterval :" $(recommanderReverse $(emptyMask $ssh_client_alive_interval "N/A") "N/A" "Set it to 300 for disconnect after 5min.")
             echo "  - ClientAliveCountMax :" $(recommander $(emptyMask $ssh_client_count_max "N/A") "0" "Recomanded value is 0.")
 
-            
             # Directadmin Status
             echo -e "\n# Directadmin ($(serviceStatusCheck "directadmin"))"
 
@@ -176,9 +176,18 @@ FORE_GREEN_COLOR='\033[1;32m'
             echo -e "\n# MYSQL ($(serviceStatusCheck "mysqld"))"
             mysql_config_path=/etc/my.cnf
             mysql_bind_address=$(get_config_variable "bind-address" $mysql_config_path)
+            mysql_local_infile=$(get_config_variable "local-infile" $mysql_config_path)
 
             echo "  * Mysql config path :" $mysql_config_path
             echo "  - Is mysql listen only on localhost :" $(recommanderYesOrNo $mysql_bind_address "127.0.0.1" "it better to disable remote access")
+            echo "  - Is local-infile set to 0 :" $(recommanderYesOrNo $mysql_local_infile "0" "disable LOAD DATA LOCAL commands by set local-infile=0")
+
+            # Webserver
+            echo -e "\n# Webserver ( Apache )"
+            webserver_config_path=/etc/httpd/conf/httpd.conf
+            webserver_mod_security_path=/etc/httpd/conf/extra/httpd-modsecurity.conf
+            echo "  * Apache config path :" $webserver_config_path
+            echo "  * mod_security config path :" $webserver_mod_security_path
 
             # PHP Status
             echo -e "\n# PHP"
@@ -205,6 +214,37 @@ FORE_GREEN_COLOR='\033[1;32m'
             echo "  - is max_input_time lower than 60 :" $(recommanderLower $php_max_input_time "60" "To prevent attacker to DOS and eat your system resources, set max_input_time<60")
             echo "  - is memory_limit lower than 64M :" $(recommanderLower $php_memory_limit "128" "To prevent attacker to send oversized POST requests to eat your system resources, set php_memory_limit<128M")
             echo "  - Disable Functions :" $php_disable_functions
+    
+            # FTP Service
+            echo -e "\n# FTP ($(serviceStatusCheck "pure-ftpd") - Pure-ftpd)"
+            ftp_config_path=/etc/proftpd.conf
+            ftp_port=$(get_config_variable_space_based "Port" $ftp_config_path)
+            echo "  * FTP config path :" $ftp_config_path
+            echo "  - Port :" $(recommanderReverse $(emptyMask $ftp_port "21") "21" "Change default ftp port.")
+
+            # Firewall Service
+            echo -e "\n# Firewall ($(serviceStatusCheck "lfd") - LFD)"
+            # Open Ports
+
+            # DNS Service
+            echo -e "\n# DNS ($(serviceStatusCheck "named") - Named)"
+            dns_config_path=/etc/named.conf
+            echo "  * DNS config path :" $dns_config_path
+
+            # Mail Service
+            echo -e "\n# Mail ($(serviceStatusCheck "exim") - Exim)"
+            mail_config_path=/etc/exim.conf
+            echo "  * Mail config path :" $mail_config_path
+
+            # IMAP Service
+            echo -e "\n# IMAP ($(serviceStatusCheck "dovecot") - Dovecot)"
+            imap_config_path=/etc/exim.conf
+            echo "  * Exim config path :" $imap_config_path
+            
+            # Pop3&SMTP Service
+            echo -e "\n# Pop3&SMTP ($(serviceStatusCheck "da-popb4smtp") - Da-popb4smtp)"
+            pop3_config_path=/etc/exim.conf
+            echo "  * Pop3&Imap config path :" $pop3_config_path
     }
 
     showHelp(){
