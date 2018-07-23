@@ -332,6 +332,7 @@ pop3_config_path=/etc/exim.conf
         echo " --php                Show PHP status"
         echo " --php --secure       Secure PHP configuration."
         echo " --php --double-php   Add PHP 7.2 to directadmin"
+        echo " --php --set-timezone Set PHP timezone"
         echo -e "\n"
         echo "Miscellaneous:"
         echo " -s, --show-status    Show server status"
@@ -371,7 +372,7 @@ pop3_config_path=/etc/exim.conf
             cd /usr/local/directadmin/custombuild; ./build set php_timezone $php_timezone
             config_editor "date.timezone" "\"${php_timezone}\"" $php_ini_path
             systemctl restart httpd
-            
+
         then
 
             directadmin_php1_release=$(get_config_variable "php1_release" $directadmin_options_path)
