@@ -1,4 +1,5 @@
 # Directadmin Shield
+## Directadmin administration & hardening tools.
 
 ```shell
 [root@s1 DirectadminShield]# sh daShield 
@@ -22,7 +23,7 @@ Example: daShield -s
 PHP Tools:
  --php                Show PHP status
  --php --secure       Secure PHP configuration.
- --php --double-php   Add PHP 7.2 to directadmin
+ --php --double-php   Add second php to directadmin
  --php --set-timezone Set PHP timezone
 
 

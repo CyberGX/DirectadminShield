@@ -331,7 +331,7 @@ pop3_config_path=/etc/exim.conf
         echo "PHP Tools:"
         echo " --php                Show PHP status"
         echo " --php --secure       Secure PHP configuration."
-        echo " --php --double-php   Add PHP 7.2 to directadmin"
+        echo " --php --double-php   Add second php to directadmin"
         echo " --php --set-timezone Set PHP timezone"
         echo -e "\n"
         echo "Miscellaneous:"
