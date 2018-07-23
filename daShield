@@ -7,7 +7,7 @@ echo "| |  | | | | '_ \ / _ \ '__| |  _\ \/ / "
 echo "| |__| |_| | |_) |  __/ |  | |_| |>  <  "
 echo " \____\__, |_.__/ \___|_|   \____/_/\_\\"
 echo "      |___/                             "
-echo "       Directadmin Hardener - v1.0      "
+echo "        Directadmin Shield - v1.0       "
 echo "       https://github.com/CyberGx/      "
 
 FORE_RED_COLOR='\033[1;31m'
@@ -16,9 +16,23 @@ BACK_GREEN_COLOR='\033[42m'
 FORE_WHITE_COLOR='\033[0;37m'
 FORE_GREEN_COLOR='\033[1;32m'
 
+directadmin_config_path=/usr/local/directadmin/conf/directadmin.conf
+directadmin_options_path=/usr/local/directadmin/custombuild/options.conf
+php_ini_path=$(/usr/local/bin/php --ini | sed -n "s/^Loaded Configuration File\s*:\s*\(\S*\).*$/\1/p")
+ssh_config_path=/etc/ssh/sshd_config
+mysql_config_path=/etc/my.cnf
+csf_config_path=/etc/csf/csf.conf
+webserver_config_path=/etc/httpd/conf/httpd.conf
+webserver_mod_security_path=/etc/httpd/conf/extra/httpd-modsecurity.conf
+ftp_config_path=/etc/proftpd.conf
+dns_config_path=/etc/named.conf
+mail_config_path=/etc/exim.conf
+imap_config_path=/etc/exim.conf
+pop3_config_path=/etc/exim.conf
+
 # Functions
     config_editor(){
-        sed -i 's/\(^'"$1"'=\).*/\1'"$2"'/' $3
+        sed -i 's/\(^'"$1"'\s*=\s*\).*/\1'"$2"'/' $3
     }
 
     set_directadmin_option(){
@@ -103,171 +117,210 @@ FORE_GREEN_COLOR='\033[1;32m'
         echo $(sed -e 's/^"//' -e 's/"$//' <<< $1)
     }
 
+    sshStatus(){
+        echo -e "\n# SSH ($(serviceStatusCheck "sshd"))\n"
+        
+        ssh_port=$(get_config_variable_space_based "Port" $ssh_config_path)
+        ssh_permit_root_login=$(get_config_variable_space_based "PermitRootLogin" $ssh_config_path)
+        ssh_protocol=$(get_config_variable_space_based "Protocol" $ssh_config_path)
+        ssh_password_authentication=$(get_config_variable_space_based "PasswordAuthentication" $ssh_config_path)
+        ssh_banner=$(get_config_variable_space_based "Banner" $ssh_config_path)
+        ssh_use_dns=$(get_config_variable_space_based "UseDNS" $ssh_config_path)
+        ssh_client_alive_interval=$(get_config_variable_space_based "ClientAliveInterval" $ssh_config_path)
+        ssh_client_count_max=$(get_config_variable_space_based "ClientAliveCountMax" $ssh_config_path)
+        
+        echo "  * SSH config path :" $ssh_config_path
+        echo "      - Protocol :" $(recommander $(emptyMask $ssh_protocol "2") "2" "Set protocol to just 2.") 
+        echo "      - Port :" $(recommanderReverse $(emptyMask $ssh_port "22") "22" "Change default ssh port.")
+        echo "      - PermitRootLogin :" $(recommander $(emptyMask $ssh_permit_root_login "yes") "no" "Disable login with username root.")
+        echo "      - Use DNS :" $(recommander $(emptyMask $ssh_use_dns "yes") "no" "set to no becuse lfd will be unable to track SSHD login failures")
+        echo "      - PasswordAuthentication :" $(recommander $(emptyMask $ssh_password_authentication "yes") "no" "Disable PasswordAuthentication and force to login with key.")
+        echo "      - Banner :" $(recommanderReverse $(emptyMask $ssh_banner "N/A") "N/A" "Set banner to prevent attacker.")
+        echo "      - ClientAliveInterval :" $(recommanderReverse $(emptyMask $ssh_client_alive_interval "N/A") "N/A" "Set it to 300 for disconnect after 5min.")
+        echo "      - ClientAliveCountMax :" $(recommander $(emptyMask $ssh_client_count_max "N/A") "0" "Recomanded value is 0.")
+    }
+
+    directadminStatus(){
+        echo -e "\n# Directadmin ($(serviceStatusCheck "directadmin"))\n"
+
+        echo -e "   * Service Information"
+        echo "      - Total users :" $(ls -1 /usr/local/directadmin/data/users | grep -v admin | wc -l)
+
+        directadmin_config_port=$(get_config_variable "port" $directadmin_config_path)
+        directadmin_config_servername=$(get_config_variable "servername" $directadmin_config_path)
+        directadmin_config_ns1=$(get_config_variable "ns1" $directadmin_config_path)
+        directadmin_config_ns2=$(get_config_variable "ns2" $directadmin_config_path)
+        directadmin_config_ssl=$(get_config_variable "SSL" $directadmin_config_path)
+        directadmin_config_carootcert=$(get_config_variable "carootcert" $directadmin_config_path)
+        directadmin_config_letsencrypt=$(get_config_variable "letsencrypt" $directadmin_config_path)
+        directadmin_config_force_hostname=$(get_config_variable "force_hostname" $directadmin_config_path)
+        directadmin_config_ssl_redirect_host=$(get_config_variable "ssl_redirect_host" $directadmin_config_path)
+
+        echo -e "\n"
+        echo -e "   * Directadmin Config path :" $directadmin_config_path
+        echo "      - Directadmin Port :" $(recommanderReverse $directadmin_config_port "2222" "Change default Directadmin port.")
+        echo "      - Directadmin Server Name :" $directadmin_config_servername
+        echo "      - Directadmin Nameservers :" $directadmin_config_ns1"," $directadmin_config_ns2
+        echo "      - Directadmin SSL :" $(recommanderYesOrNo $directadmin_config_ssl "1" "its better to enable SSL by set SSL=1")
+        echo "      - Directadmin CA Root Cert :" $(recommanderReverse $(emptyMask $directadmin_config_carootcert "N/A") "N/A" "if ssl enabled you must set it.")
+        echo "      - Is letsencrypt enable :" $(recommanderYesOrNo $(emptyMask $directadmin_config_letsencrypt "0") "1" "its better to enable letsencrypt by set letsencrypt=1")
+        echo "      - Directadmin Force Hostname :" $(recommanderReverse $(emptyMask $directadmin_config_force_hostname "N/A") "N/A" "its better to set force_hostname=your.hostname.com")
+        echo "      - Directadmin SSL Redirect Host :" $(recommanderReverse $(emptyMask $directadmin_config_ssl_redirect_host "N/A") "N/A" "its better to set ssl_redirect_host=your.hostname.com")
+
+        # Directadmin Options
+
+        directadmin_system_email=$(get_config_variable "email" $directadmin_options_path)
+        directadmin_autoupdate=$(get_config_variable "da_autoupdate" $directadmin_options_path)
+        directadmin_clean_old_webapps=$(get_config_variable "clean_old_webapps" $directadmin_options_path)
+        directadmin_webapps_updates=$(get_config_variable "webapps_updates" $directadmin_options_path)
+        directadmin_updates=$(get_config_variable "updates" $directadmin_options_path)
+        directadmin_php1_release=$(get_config_variable "php1_release" $directadmin_options_path)
+        directadmin_php2_release=$(get_config_variable "php2_release" $directadmin_options_path)
+        directadmin_php1_mode=$(get_config_variable "php1_mode" $directadmin_options_path)
+        directadmin_php2_mode=$(get_config_variable "php2_mode" $directadmin_options_path)
+
+        echo -e "\n"
+        echo "  * Directadmin Options path :" $directadmin_options_path
+        echo "      - Directadmin system email :" $directadmin_system_email
+        echo "      - Directadmin automatic update :" $(recommander $directadmin_autoupdate "yes")
+        echo "      - Clean old webapps :" $(recommander $directadmin_clean_old_webapps "yes")
+        echo "      - Webapps updates :" $(recommander $directadmin_webapps_updates "yes")
+        echo "      - Updates :" $(recommander $directadmin_updates "no" "its better to update manualy")
+        echo "      - PHP1 Release :" $directadmin_php1_release
+        echo "      - PHP1 Mode :" $directadmin_php1_mode
+        echo "      - PHP2 Release :" $directadmin_php2_release
+        echo "      - PHP2 Mode :" $directadmin_php2_mode
+
+    }
+
+    mysqlStatus(){
+        echo -e "\n# MYSQL ($(serviceStatusCheck "mysqld"))\n"
+
+        mysql_bind_address=$(get_config_variable "bind-address" $mysql_config_path)
+        mysql_local_infile=$(get_config_variable "local-infile" $mysql_config_path)
+
+        echo "  * Mysql config path :" $mysql_config_path
+        echo "      - Is mysql listen only on localhost :" $(recommanderYesOrNo $mysql_bind_address "127.0.0.1" "it better to disable remote access")
+        echo "      - Is local-infile set to 0 :" $(recommanderYesOrNo $mysql_local_infile "0" "disable LOAD DATA LOCAL commands by set local-infile=0")
+    }
+    
+    webserverStatus(){
+        echo -e "\n# Webserver ( Apache )\n"
+
+        echo "  * Apache config path :" $webserver_config_path
+        echo "  * mod_security config path :" $webserver_mod_security_path
+    }
+
+    phpStatus(){
+        echo -e "\n# PHP\n"
+        php_disable_functions=$(get_config_variable "disable_functions" $php_ini_path)
+        php_expose=$(get_config_variable "expose_php" $php_ini_path)
+        php_display_errors=$(get_config_variable "display_errors" $php_ini_path)
+        php_log_errors=$(get_config_variable "log_errors" $php_ini_path)
+        php_allow_url_include=$(get_config_variable "allow_url_include" $php_ini_path)
+        php_allow_url_fopen=$(get_config_variable "allow_url_fopen" $php_ini_path)
+        php_post_max_size=$(get_config_variable "post_max_size" $php_ini_path)
+        php_max_execution_time=$(get_config_variable "max_execution_time" $php_ini_path)
+        php_max_input_time=$(get_config_variable "max_input_time" $php_ini_path)
+        php_memory_limit=$(get_config_variable "memory_limit" $php_ini_path)
+        echo "  * PHP.ini path :" $php_ini_path
+        echo "      - PHP Version :" $(php -v | sed 's/(.*//' | head -1)
+        echo "      - is Expose PHP OFF :" $(recommanderYesOrNo $php_expose "Off" "To restrict PHP information leakage set expose_php=Off")
+        echo "      - is Display Errors OFF :" $(recommanderYesOrNo $php_display_errors "Off" "Set display_errors=Off, Do not expose PHP error messages to all site visitors.")
+        echo "      - is Logging Enable :" $(recommanderYesOrNo $php_log_errors "On" "To enable logging system set log_errors=Off")
+        echo "      - is allow_url_include Disable :" $(recommanderYesOrNo $php_allow_url_include "Off" "To prevent Remote Code Execution set allow_url_include=Off")
+        echo "      - is allow_url_fopen Disable :" $(recommanderYesOrNo $php_allow_url_fopen "Off" "To prevent Remote Code Execution set allow_url_fopen=Off")
+        echo "      - is post_max_size lower than 64M :" $(recommanderLower $php_post_max_size "64" "To prevent attacker to send oversized POST requests to eat your system resources, set post_max_size<64M")
+        echo "      - is max_execution_time lower than 30 :" $(recommanderLower $php_max_execution_time "30" "To prevent attacker to DOS and eat your system resources, set php_max_execution_time<30")
+        echo "      - is max_input_time lower than 60 :" $(recommanderLower $php_max_input_time "60" "To prevent attacker to DOS and eat your system resources, set max_input_time<60")
+        echo "      - is memory_limit lower than 64M :" $(recommanderLower $php_memory_limit "128" "To prevent attacker to send oversized POST requests to eat your system resources, set php_memory_limit<128M")
+        echo "      - Disable Functions :" $php_disable_functions
+    }
+
+    ftpStatus(){
+        echo -e "\n# FTP ($(serviceStatusCheck "pure-ftpd") - Pure-ftpd)\n"
+        ftp_port=$(get_config_variable_space_based "Port" $ftp_config_path)
+        echo "  * FTP config path :" $ftp_config_path
+        echo "      - Port :" $(recommanderReverse $(emptyMask $ftp_port "21") "21" "Change default ftp port.")
+    }
+
+    firewallStatus(){
+        echo -e "\n# Firewall ($(serviceStatusCheck "lfd") - LFD)\n"
+        csf_testing=$(get_config_variable "TESTING" $csf_config_path)
+        csf_tcp_in=$(get_config_variable "TCP_IN" $csf_config_path)
+        csf_tcp_out=$(get_config_variable "TCP_OUT" $csf_config_path)
+        csf_udp_in=$(get_config_variable "UDP_IN" $csf_config_path)
+        csf_udp_out=$(get_config_variable "UDP_OUT" $csf_config_path)
+        csf_icmp_in=$(get_config_variable "ICMP_IN" $csf_config_path)
+        csf_ipv6=$(get_config_variable "IPV6" $csf_config_path)
+
+        echo "  * CSF config path :" $csf_config_path
+        echo "      - is CSF enable :" $(recommanderYesOrNo $(qouteRemover $csf_testing) "0" "To enable firewall you must set TESTING=0")
+        echo "      - Allowed TCP-IN Ports :" $(qouteRemover $csf_tcp_in)
+        echo "      - Allowed TCP-OUT Ports :" $(qouteRemover $csf_tcp_out)
+        echo "      - Allowed UDP-IN Ports :" $(qouteRemover $csf_udp_in)
+        echo "      - Allowed UDP-OUT Ports :" $(qouteRemover $csf_udp_out)
+        echo "      - is ICMP-IN Disable :" $(recommanderYesOrNo $(qouteRemover $csf_icmp_in) "0" "you must set ICMP_IN=0")
+        echo "      - is IPV6 Disable :" $(recommanderYesOrNo $(qouteRemover $csf_ipv6) "0" "you must disable ipv6 by set IPV6=0")
+    }
+
+    dnsStatus(){
+        echo -e "\n# DNS ($(serviceStatusCheck "named") - Named)\n"
+        echo "  * DNS config path :" $dns_config_path
+    }
+
+    mailStatus(){
+        # Mail Service
+        echo -e "\n# Mail ($(serviceStatusCheck "exim") - Exim)\n"
+        echo "  * Mail config path :" $mail_config_path
+           
+        # IMAP Service
+        echo -e "\n# IMAP ($(serviceStatusCheck "dovecot") - Dovecot)\n"
+        echo "  * Exim config path :" $imap_config_path
+
+        # Pop3&SMTP Service
+        echo -e "\n# Pop3&SMTP ($(serviceStatusCheck "da-popb4smtp") - Da-popb4smtp)\n"
+        echo "  * Pop3&Imap config path :" $pop3_config_path        
+    }
+
     showStatus(){
         # Show Status
         echo -e " \n\n ----- Server Status ----- \n"
             
-            echo "# OS : " $(cat /etc/redhat-release)
-
+            echo "# OS :" $(cat /etc/redhat-release)
+            echo "# Hostname :" $(hostname)
+            echo "# Memory Usage :" $(free -m | awk 'NR==2{printf "%s/%sMB (%.2f%%)\n", $3,$2,$3*100/$2 }')
+            echo "# Disk Usage :" $(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)\n", $3,$2,$5}')
+            echo "# CPU Load :" $(top -bn1 | grep load | awk '{printf "%.2f\n", $(NF-2)}' )
+            echo "# IP :" $(ifconfig | awk '/inet /{print substr($2,1)}' | grep -v 127.0.0.1 | xargs)
         echo -e " \n\n ----- Services Status -----"
 
             # SSH Status
-            echo -e "\n# SSH ($(serviceStatusCheck "sshd"))"
+            sshStatus
             
-            ssh_config_path=/etc/ssh/sshd_config
-            ssh_port=$(get_config_variable_space_based "Port" $ssh_config_path)
-            ssh_permit_root_login=$(get_config_variable_space_based "PermitRootLogin" $ssh_config_path)
-            ssh_protocol=$(get_config_variable_space_based "Protocol" $ssh_config_path)
-            ssh_password_authentication=$(get_config_variable_space_based "PasswordAuthentication" $ssh_config_path)
-            ssh_banner=$(get_config_variable_space_based "Banner" $ssh_config_path)
-            ssh_use_dns=$(get_config_variable_space_based "UseDNS" $ssh_config_path)
-            ssh_client_alive_interval=$(get_config_variable_space_based "ClientAliveInterval" $ssh_config_path)
-            ssh_client_count_max=$(get_config_variable_space_based "ClientAliveCountMax" $ssh_config_path)
-            
-            echo "  * SSH config path :" $ssh_config_path
-            echo "  - Protocol :" $(recommander $(emptyMask $ssh_protocol "2") "2" "Set protocol to just 2.") 
-            echo "  - Port :" $(recommanderReverse $(emptyMask $ssh_port "22") "22" "Change default ssh port.")
-            echo "  - PermitRootLogin :" $(recommander $(emptyMask $ssh_permit_root_login "yes") "no" "Disable login with username root.")
-            echo "  - Use DNS :" $(recommander $(emptyMask $ssh_use_dns "yes") "no" "set to no becuse lfd will be unable to track SSHD login failures")
-            echo "  - PasswordAuthentication :" $(recommander $(emptyMask $ssh_password_authentication "yes") "no" "Disable PasswordAuthentication and force to login with key.")
-            echo "  - Banner :" $(recommanderReverse $(emptyMask $ssh_banner "N/A") "N/A" "Set banner to prevent attacker.")
-            echo "  - ClientAliveInterval :" $(recommanderReverse $(emptyMask $ssh_client_alive_interval "N/A") "N/A" "Set it to 300 for disconnect after 5min.")
-            echo "  - ClientAliveCountMax :" $(recommander $(emptyMask $ssh_client_count_max "N/A") "0" "Recomanded value is 0.")
-
             # Directadmin Status
-            echo -e "\n# Directadmin ($(serviceStatusCheck "directadmin"))"
-
-            directadmin_config_path=/usr/local/directadmin/conf/directadmin.conf
-            directadmin_config_port=$(get_config_variable "port" $directadmin_config_path)
-            directadmin_config_servername=$(get_config_variable "servername" $directadmin_config_path)
-            directadmin_config_ns1=$(get_config_variable "ns1" $directadmin_config_path)
-            directadmin_config_ns2=$(get_config_variable "ns2" $directadmin_config_path)
-            directadmin_config_ssl=$(get_config_variable "SSL" $directadmin_config_path)
-            directadmin_config_carootcert=$(get_config_variable "carootcert" $directadmin_config_path)
-            directadmin_config_letsencrypt=$(get_config_variable "letsencrypt" $directadmin_config_path)
-            directadmin_config_force_hostname=$(get_config_variable "force_hostname" $directadmin_config_path)
-            directadmin_config_ssl_redirect_host=$(get_config_variable "ssl_redirect_host" $directadmin_config_path)
-
-            echo -e "\n  * Directadmin Config path :" $directadmin_config_path
-            echo "  - Directadmin Port :" $(recommanderReverse $directadmin_config_port "2222" "Change default Directadmin port.")
-            echo "  - Directadmin Server Name :" $directadmin_config_servername
-            echo "  - Directadmin Nameservers :" $directadmin_config_ns1"," $directadmin_config_ns2
-            echo "  - Directadmin SSL :" $(recommanderYesOrNo $directadmin_config_ssl "1" "its better to enable SSL by set SSL=1")
-            echo "  - Directadmin CA Root Cert :" $(recommanderReverse $(emptyMask $directadmin_config_carootcert "N/A") "N/A" "if ssl enabled you must set it.")
-            echo "  - Is letsencrypt enable :" $(recommanderYesOrNo $(emptyMask $directadmin_config_letsencrypt "0") "1" "its better to enable letsencrypt by set letsencrypt=1")
-            echo "  - Directadmin Force Hostname :" $(recommanderReverse $(emptyMask $directadmin_config_force_hostname "N/A") "N/A" "its better to set force_hostname=your.hostname.com")
-            echo "  - Directadmin SSL Redirect Host :" $(recommanderReverse $(emptyMask $directadmin_config_ssl_redirect_host "N/A") "N/A" "its better to set ssl_redirect_host=your.hostname.com")
-
-            # Directadmin Options
-
-            directadmin_options_path=/usr/local/directadmin/custombuild/options.conf
-            directadmin_system_email=$(get_config_variable "email" $directadmin_options_path)
-            directadmin_autoupdate=$(get_config_variable "da_autoupdate" $directadmin_options_path)
-            directadmin_clean_old_webapps=$(get_config_variable "clean_old_webapps" $directadmin_options_path)
-            directadmin_webapps_updates=$(get_config_variable "webapps_updates" $directadmin_options_path)
-            directadmin_updates=$(get_config_variable "updates" $directadmin_options_path)
-            
-            echo -e "\n"
-            echo "  * Directadmin Options path :" $directadmin_options_path
-            echo "  - Directadmin system email :" $directadmin_system_email
-            echo "  - Directadmin automatic update :" $(recommander $directadmin_autoupdate "yes")
-            echo "  - Clean old webapps :" $(recommander $directadmin_clean_old_webapps "yes")
-            echo "  - Webapps updates :" $(recommander $directadmin_webapps_updates "yes")
-            echo "  - Updates :" $(recommander $directadmin_updates "no" "its better to update manualy")
-
+            directadminStatus
 
             # Mysql Status
-            echo -e "\n# MYSQL ($(serviceStatusCheck "mysqld"))"
-            mysql_config_path=/etc/my.cnf
-            mysql_bind_address=$(get_config_variable "bind-address" $mysql_config_path)
-            mysql_local_infile=$(get_config_variable "local-infile" $mysql_config_path)
-
-            echo "  * Mysql config path :" $mysql_config_path
-            echo "  - Is mysql listen only on localhost :" $(recommanderYesOrNo $mysql_bind_address "127.0.0.1" "it better to disable remote access")
-            echo "  - Is local-infile set to 0 :" $(recommanderYesOrNo $mysql_local_infile "0" "disable LOAD DATA LOCAL commands by set local-infile=0")
+            mysqlStatus
 
             # Webserver
-            echo -e "\n# Webserver ( Apache )"
-            webserver_config_path=/etc/httpd/conf/httpd.conf
-            webserver_mod_security_path=/etc/httpd/conf/extra/httpd-modsecurity.conf
-            echo "  * Apache config path :" $webserver_config_path
-            echo "  * mod_security config path :" $webserver_mod_security_path
+            webserverStatus
 
             # PHP Status
-            echo -e "\n# PHP"
-            php_ini_path=$(/usr/local/bin/php --ini | sed -n "s/^Loaded Configuration File\s*:\s*\(\S*\).*$/\1/p")
-            php_disable_functions=$(get_config_variable "disable_functions" $php_ini_path)
-            php_expose=$(get_config_variable "expose_php" $php_ini_path)
-            php_display_errors=$(get_config_variable "display_errors" $php_ini_path)
-            php_log_errors=$(get_config_variable "log_errors" $php_ini_path)
-            php_allow_url_include=$(get_config_variable "allow_url_include" $php_ini_path)
-            php_allow_url_fopen=$(get_config_variable "allow_url_fopen" $php_ini_path)
-            php_post_max_size=$(get_config_variable "post_max_size" $php_ini_path)
-            php_max_execution_time=$(get_config_variable "max_execution_time" $php_ini_path)
-            php_max_input_time=$(get_config_variable "max_input_time" $php_ini_path)
-            php_memory_limit=$(get_config_variable "memory_limit" $php_ini_path)
-            echo "  * PHP.ini path :" $php_ini_path
-            echo "  - PHP Version :" $(php -v | sed 's/(.*//' | head -1)
-            echo "  - is Expose PHP OFF :" $(recommanderYesOrNo $php_expose "Off" "To restrict PHP information leakage set expose_php=Off")
-            echo "  - is Display Errors OFF :" $(recommanderYesOrNo $php_display_errors "Off" "Set display_errors=Off, Do not expose PHP error messages to all site visitors.")
-            echo "  - is Logging Enable :" $(recommanderYesOrNo $php_log_errors "On" "To enable logging system set log_errors=Off")
-            echo "  - is allow_url_include Disable :" $(recommanderYesOrNo $php_allow_url_include "Off" "To prevent Remote Code Execution set allow_url_include=Off")
-            echo "  - is allow_url_fopen Disable :" $(recommanderYesOrNo $php_allow_url_fopen "Off" "To prevent Remote Code Execution set allow_url_fopen=Off")
-            echo "  - is post_max_size lower than 64M :" $(recommanderLower $php_post_max_size "64" "To prevent attacker to send oversized POST requests to eat your system resources, set post_max_size<64M")
-            echo "  - is max_execution_time lower than 30 :" $(recommanderLower $php_max_execution_time "30" "To prevent attacker to DOS and eat your system resources, set php_max_execution_time<30")
-            echo "  - is max_input_time lower than 60 :" $(recommanderLower $php_max_input_time "60" "To prevent attacker to DOS and eat your system resources, set max_input_time<60")
-            echo "  - is memory_limit lower than 64M :" $(recommanderLower $php_memory_limit "128" "To prevent attacker to send oversized POST requests to eat your system resources, set php_memory_limit<128M")
-            echo "  - Disable Functions :" $php_disable_functions
-    
+            phpStatus
+
             # FTP Service
-            echo -e "\n# FTP ($(serviceStatusCheck "pure-ftpd") - Pure-ftpd)"
-            ftp_config_path=/etc/proftpd.conf
-            ftp_port=$(get_config_variable_space_based "Port" $ftp_config_path)
-            echo "  * FTP config path :" $ftp_config_path
-            echo "  - Port :" $(recommanderReverse $(emptyMask $ftp_port "21") "21" "Change default ftp port.")
+            ftpStatus
 
             # Firewall Service
-            echo -e "\n# Firewall ($(serviceStatusCheck "lfd") - LFD)"
-            csf_config_path=/etc/csf/csf.conf
-            csf_testing=$(get_config_variable "TESTING" $csf_config_path)
-            csf_tcp_in=$(get_config_variable "TCP_IN" $csf_config_path)
-            csf_tcp_out=$(get_config_variable "TCP_OUT" $csf_config_path)
-            csf_udp_in=$(get_config_variable "UDP_IN" $csf_config_path)
-            csf_udp_out=$(get_config_variable "UDP_OUT" $csf_config_path)
-            csf_icmp_in=$(get_config_variable "ICMP_IN" $csf_config_path)
-            csf_ipv6=$(get_config_variable "IPV6" $csf_config_path)
-
-            echo "  * CSF config path :" $csf_config_path
-            echo "  - is CSF enable :" $(recommanderYesOrNo $(qouteRemover $csf_testing) "0" "To enable firewall you must set TESTING=0")
-            echo "  - Allowed TCP-IN Ports :" $(qouteRemover $csf_tcp_in)
-            echo "  - Allowed TCP-OUT Ports :" $(qouteRemover $csf_tcp_out)
-            echo "  - Allowed UDP-IN Ports :" $(qouteRemover $csf_udp_in)
-            echo "  - Allowed UDP-OUT Ports :" $(qouteRemover $csf_udp_out)
-            echo "  - is ICMP-IN Disable :" $(recommanderYesOrNo $(qouteRemover $csf_icmp_in) "0" "you must set ICMP_IN=0")
-            echo "  - is IPV6 Disable :" $(recommanderYesOrNo $(qouteRemover $csf_ipv6) "0" "you must disable ipv6 by set IPV6=0")
-
-
-            # Open Ports
+            firewallStatus
 
             # DNS Service
-            echo -e "\n# DNS ($(serviceStatusCheck "named") - Named)"
-            dns_config_path=/etc/named.conf
-            echo "  * DNS config path :" $dns_config_path
+            dnsStatus
 
             # Mail Service
-            echo -e "\n# Mail ($(serviceStatusCheck "exim") - Exim)"
-            mail_config_path=/etc/exim.conf
-            echo "  * Mail config path :" $mail_config_path
-
-            # IMAP Service
-            echo -e "\n# IMAP ($(serviceStatusCheck "dovecot") - Dovecot)"
-            imap_config_path=/etc/exim.conf
-            echo "  * Exim config path :" $imap_config_path
-            
-            # Pop3&SMTP Service
-            echo -e "\n# Pop3&SMTP ($(serviceStatusCheck "da-popb4smtp") - Da-popb4smtp)"
-            pop3_config_path=/etc/exim.conf
-            echo "  * Pop3&Imap config path :" $pop3_config_path
+            mailStatus
     }
 
     showHelp(){
@@ -275,18 +328,69 @@ FORE_GREEN_COLOR='\033[1;32m'
         echo "Usage: daShield [OPTION]"
         echo "Example: daShield -s"
         echo -e "\n"
+        echo "PHP Tools:"
+        echo " --php                Show PHP status"
+        echo " --php --secure       Secure PHP configuration."
+        echo " --php --double-php   Add PHP 7.2 to directadmin"
+        echo -e "\n"
         echo "Miscellaneous:"
         echo " -s, --show-status    Show server status"
         echo " -h, --help           Display this help text and exit"
         echo -e "\n"
     }
 
+    phpRouter(){
+        if [[ ${BASH_ARGV[0]} == "--secure" ]]
+        then
+            cd /usr/local/directadmin/custombuild; ./build update; ./build secure_php
+        elif [ ${BASH_ARGV[0]} == "--double-php" ]
+        then
+
+            directadmin_php1_release=$(get_config_variable "php1_release" $directadmin_options_path)
+            directadmin_php2_release=$(get_config_variable "php2_release" $directadmin_options_path)
+
+            echo "* PHP1 Version :" $directadmin_php1_release
+            echo "* PHP2 Version :" $directadmin_php2_release
+            
+            read -p '# PHP1 - What PHP version do you need (5.6) : ' first_php_version
+            read -p '# PHP2 - What PHP version do you need (7.2) : ' second_php_version
+
+            set_directadmin_option "php1_release" $first_php_version
+            set_directadmin_option "php2_release" $second_php_version
+
+            cd /usr/local/directadmin/custombuild; ./build update; ./build php d;
+
+            echo "* All websites currently running on your DirectAdmin server will use the value set for PHP 1. In order to alter the PHP version per website, navigate to the User Level, select the domain name, click ""Domain Setup"" under ""Your Account"", click the domain name and scroll down."
+        elif [ ${BASH_ARGV[0]} == "--set-timezone" ]
+
+            directadmin_php_timezone=$(get_config_variable "php_timezone" $directadmin_options_path)
+            php_ini_timezone=$(get_config_variable "date.timezone" $php_ini_path)
+
+            echo "* Current Timezone :" $directadmin_php_timezone "," $(qouteRemover $php_ini_timezone)
+            read -p '# Where are you (Ex: Europe\\/London | Asia\\/Tehran) : ' php_timezone
+            cd /usr/local/directadmin/custombuild; ./build set php_timezone $php_timezone
+            config_editor "date.timezone" "\"${php_timezone}\"" $php_ini_path
+            systemctl restart httpd
+            
+        then
+
+            directadmin_php1_release=$(get_config_variable "php1_release" $directadmin_options_path)
+            directadmin_php2_release=$(get_config_variable "php2_release" $directadmin_options_path)
+
+        else
+            phpStatus
+        fi
+    }
 # Router
-while [ "$1" != "" ]; do
+while [ "$1" != "exit" ]; do
     case $1 in
         -s | --show-status )    showStatus
                                 ;;
         -h | --help )           showHelp
+                                exit
+                                ;;
+        --php )                 shift
+                                phpRouter
                                 exit
                                 ;;
         * )                     showHelp
@@ -296,13 +400,9 @@ while [ "$1" != "" ]; do
 done
 
 
+
 ### mod security
 
-    #
-# read -p 'Email : ' email
-
-# Secure PHP & Add Disabled Function
-# cd /usr/local/directadmin/custombuild; ./build update; ./build secure_php
 
 # Regular updates of system services, libraries and scripts.
 # cd /usr/local/directadmin/custombuild; ./build update; ./build all d
