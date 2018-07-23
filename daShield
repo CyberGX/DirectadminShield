@@ -376,6 +376,54 @@ pop3_config_path=/etc/exim.conf
         fi
     }
 
+    directadminRouter(){
+        if [[ ${BASH_ARGV[0]} == "--change-port" ]]
+        then
+            directadmin_config_port=$(get_config_variable "port" $directadmin_config_path)
+            
+            echo -e "\n"
+            echo "* Current Port :" $directadmin_config_port
+            read -p '* New Port : ' directadmin_new_port
+
+            is_new_port_inuse=$(lsof -i -P -n | grep LISTEN | grep "*:${directadmin_new_port}\ " | wc -l)
+            if [ $is_new_port_inuse -gt "0" ]
+            then
+                echo "- Port ${directadmin_new_port} is in use, choose another one."
+            else
+                # Change Directadmin Port
+                config_editor "port" "${directadmin_new_port}" $directadmin_config_path
+                # Change CSF Conf
+
+                #TCP-in
+                csf_tcp_in=$(get_config_variable "TCP_IN" $csf_config_path)
+                new_csf_tcp_in=$(sed "s/\,${directadmin_config_port}/\,${directadmin_new_port}/" <<< $csf_tcp_in)
+                config_editor "TCP_IN" "${new_csf_tcp_in}" $csf_config_path
+                #TCP-out
+                csf_tcp_out=$(get_config_variable "TCP_OUT" $csf_config_path)
+                new_csf_tcp_out=$(sed "s/\,${directadmin_config_port}/\,${directadmin_new_port}/" <<< $csf_tcp_out)
+                config_editor "TCP_OUT" "${new_csf_tcp_out}" $csf_config_path
+
+                # Restart CSF
+                echo -e "\n"
+                echo "* Restarting CSF ..."
+                csf -r >/dev/null
+
+                # Restart Directadmin
+                echo "* Restarting Directadmin ..."
+                service directadmin restart 2>&1 >/dev/null
+                
+                echo "+ Port Changed."
+                echo -e "\n"
+            fi
+
+        elif [ ${BASH_ARGV[0]} == "--double-php" ]
+        then
+            echo "test"
+        else
+            directadminStatus
+        fi
+    }
+
     showHelp(){
         echo -e "\n"
         echo "Usage: daShield [OPTION]"
@@ -386,6 +434,10 @@ pop3_config_path=/etc/exim.conf
         echo " --php --secure                       Secure PHP configuration"
         echo " --php --double-php                   Add second php to directadmin"
         echo " --php --set-timezone                 Set PHP timezone"
+        echo -e "\n"
+        echo "Directadmin Tools:"
+        echo "--directadmin                         Show Directadmin status"
+        echo "--directadmin --change-port           Change directadmin port"
         echo -e "\n"
         echo "Webserver Tools:"
         echo " --webserver                          Show Webserver status"
@@ -411,6 +463,10 @@ while [ "$1" != "exit" ]; do
                                 ;;
         --webserver )           shift
                                 webserverRouter
+                                exit
+                                ;;
+        --directadmin )         shift
+                                directadminRouter
                                 exit
                                 ;;
         * )                     showHelp
