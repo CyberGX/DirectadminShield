@@ -2,7 +2,7 @@
 ## Directadmin administration & hardening tools.
 
 ```shell
-[root@s1 DirectadminShield]# sh daShield 
+[root@centos7 DirectadminShield]# sh daShield -h 
  
 
 
@@ -21,13 +21,23 @@ Example: daShield -s
 
 
 PHP Tools:
- --php                Show PHP status
- --php --secure       Secure PHP configuration.
- --php --double-php   Add second php to directadmin
- --php --set-timezone Set PHP timezone
+ --php                                Show PHP status
+ --php --secure                       Secure PHP configuration
+ --php --double-php                   Add second php to directadmin
+ --php --set-timezone                 Set PHP timezone
+
+
+Directadmin Tools:
+--directadmin                         Show Directadmin status
+--directadmin --change-port           Change directadmin port
+
+
+Webserver Tools:
+ --webserver                          Show Webserver status
+ --webserver --install-mod-security   Install mod_security
 
 
 Miscellaneous:
- -s, --show-status    Show server status
- -h, --help           Display this help text and exit
+ -s, --show-status                    Show server status
+ -h, --help                           Display this help text and exit
  ```
