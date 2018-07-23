@@ -99,6 +99,10 @@ FORE_GREEN_COLOR='\033[1;32m'
         fi
     }
 
+    qouteRemover(){
+        echo $(sed -e 's/^"//' -e 's/"$//' <<< $1)
+    }
+
     showStatus(){
         # Show Status
         echo -e " \n\n ----- Server Status ----- \n"
@@ -224,6 +228,25 @@ FORE_GREEN_COLOR='\033[1;32m'
 
             # Firewall Service
             echo -e "\n# Firewall ($(serviceStatusCheck "lfd") - LFD)"
+            csf_config_path=/etc/csf/csf.conf
+            csf_testing=$(get_config_variable "TESTING" $csf_config_path)
+            csf_tcp_in=$(get_config_variable "TCP_IN" $csf_config_path)
+            csf_tcp_out=$(get_config_variable "TCP_OUT" $csf_config_path)
+            csf_udp_in=$(get_config_variable "UDP_IN" $csf_config_path)
+            csf_udp_out=$(get_config_variable "UDP_OUT" $csf_config_path)
+            csf_icmp_in=$(get_config_variable "ICMP_IN" $csf_config_path)
+            csf_ipv6=$(get_config_variable "IPV6" $csf_config_path)
+
+            echo "  * CSF config path :" $csf_config_path
+            echo "  - is CSF enable :" $(recommanderYesOrNo $(qouteRemover $csf_testing) "0" "To enable firewall you must set TESTING=0")
+            echo "  - Allowed TCP-IN Ports :" $(qouteRemover $csf_tcp_in)
+            echo "  - Allowed TCP-OUT Ports :" $(qouteRemover $csf_tcp_out)
+            echo "  - Allowed UDP-IN Ports :" $(qouteRemover $csf_udp_in)
+            echo "  - Allowed UDP-OUT Ports :" $(qouteRemover $csf_udp_out)
+            echo "  - is ICMP-IN Disable :" $(recommanderYesOrNo $(qouteRemover $csf_icmp_in) "0" "you must set ICMP_IN=0")
+            echo "  - is IPV6 Disable :" $(recommanderYesOrNo $(qouteRemover $csf_ipv6) "0" "you must disable ipv6 by set IPV6=0")
+
+
             # Open Ports
 
             # DNS Service
