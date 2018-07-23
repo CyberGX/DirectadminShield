@@ -323,23 +323,6 @@ pop3_config_path=/etc/exim.conf
             mailStatus
     }
 
-    showHelp(){
-        echo -e "\n"
-        echo "Usage: daShield [OPTION]"
-        echo "Example: daShield -s"
-        echo -e "\n"
-        echo "PHP Tools:"
-        echo " --php                Show PHP status"
-        echo " --php --secure       Secure PHP configuration."
-        echo " --php --double-php   Add second php to directadmin"
-        echo " --php --set-timezone Set PHP timezone"
-        echo -e "\n"
-        echo "Miscellaneous:"
-        echo " -s, --show-status    Show server status"
-        echo " -h, --help           Display this help text and exit"
-        echo -e "\n"
-    }
-
     phpRouter(){
         if [[ ${BASH_ARGV[0]} == "--secure" ]]
         then
@@ -363,7 +346,7 @@ pop3_config_path=/etc/exim.conf
 
             echo "* All websites currently running on your DirectAdmin server will use the value set for PHP 1. In order to alter the PHP version per website, navigate to the User Level, select the domain name, click ""Domain Setup"" under ""Your Account"", click the domain name and scroll down."
         elif [ ${BASH_ARGV[0]} == "--set-timezone" ]
-
+        then
             directadmin_php_timezone=$(get_config_variable "php_timezone" $directadmin_options_path)
             php_ini_timezone=$(get_config_variable "date.timezone" $php_ini_path)
 
@@ -372,16 +355,48 @@ pop3_config_path=/etc/exim.conf
             cd /usr/local/directadmin/custombuild; ./build set php_timezone $php_timezone
             config_editor "date.timezone" "\"${php_timezone}\"" $php_ini_path
             systemctl restart httpd
-
-        then
-
-            directadmin_php1_release=$(get_config_variable "php1_release" $directadmin_options_path)
-            directadmin_php2_release=$(get_config_variable "php2_release" $directadmin_options_path)
-
         else
             phpStatus
         fi
     }
+
+    webserverRouter(){
+        if [[ ${BASH_ARGV[0]} == "--install-mod-security" ]]
+        then
+            read -p '# Are you sure to install mod_security ? (if not CTRL+C) ' first_php_version
+            set_directadmin_option "modsecurity" "yes"
+            set_directadmin_option "modsecurity_ruleset" "comodo"
+            cd /usr/local/directadmin/custombuild; ./build modsecurity; ./build modsecurity_rules;
+            cd /usr/local/directadmin/custombuild; ./build cron;
+        elif [ ${BASH_ARGV[0]} == "--double-php" ]
+        then
+            echo "test"
+        else
+            webserverStatus
+        fi
+    }
+
+    showHelp(){
+        echo -e "\n"
+        echo "Usage: daShield [OPTION]"
+        echo "Example: daShield -s"
+        echo -e "\n"
+        echo "PHP Tools:"
+        echo " --php                                Show PHP status"
+        echo " --php --secure                       Secure PHP configuration"
+        echo " --php --double-php                   Add second php to directadmin"
+        echo " --php --set-timezone                 Set PHP timezone"
+        echo -e "\n"
+        echo "Webserver Tools:"
+        echo " --webserver                          Show Webserver status"
+        echo " --webserver --install-mod-security   Install mod_security"
+        echo -e "\n"
+        echo "Miscellaneous:"
+        echo " -s, --show-status                    Show server status"
+        echo " -h, --help                           Display this help text and exit"
+        echo -e "\n"
+    }
+
 # Router
 while [ "$1" != "exit" ]; do
     case $1 in
@@ -394,16 +409,15 @@ while [ "$1" != "exit" ]; do
                                 phpRouter
                                 exit
                                 ;;
+        --webserver )           shift
+                                webserverRouter
+                                exit
+                                ;;
         * )                     showHelp
                                 exit 1
     esac
     shift
 done
-
-
-
-### mod security
-
 
 # Regular updates of system services, libraries and scripts.
 # cd /usr/local/directadmin/custombuild; ./build update; ./build all d
@@ -415,12 +429,3 @@ done
 # set_directadmin_option "clean_old_webapps" "yes"
 # set_directadmin_option "updates" "no"
 # set_directadmin_option "webapps_updates" "yes"
-
-
-# set_directadmin_option "modsecurity" "yes"
-# set_directadmin_option "modsecurity_ruleset" "comodo"
-# cd /usr/local/directadmin/custombuild; ./build modsecurity; ./build modsecurity_rules;
-
-# cd /usr/local/directadmin/custombuild; ./build cron;
-
-# Set Mysql to listen only on localhost
