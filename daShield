@@ -368,11 +368,45 @@ pop3_config_path=/etc/exim.conf
             set_directadmin_option "modsecurity_ruleset" "comodo"
             cd /usr/local/directadmin/custombuild; ./build modsecurity; ./build modsecurity_rules;
             cd /usr/local/directadmin/custombuild; ./build cron;
-        elif [ ${BASH_ARGV[0]} == "--double-php" ]
-        then
-            echo "test"
         else
             webserverStatus
+        fi
+    }
+
+    mailRouter(){
+        if [[ ${BASH_ARGV[0]} == "--install-dkim" ]]
+        then
+            exim_supports=$(/usr/sbin/exim -bV | grep 'Support for' )
+            if [[ $exim_supports = *"DKIM"* ]]; then
+                echo "It's there!"
+
+                is_exim_already_support=$(cat /etc/exim.conf | grep exim.dkim.conf | wc -l)
+                if [ $is_exim_already_support -gt "0" ]
+                then
+                    echo "exim is already supported."
+                else
+                    cd /etc; wget -O exim.dkim.conf http://files.directadmin.com/services/exim.dkim.conf
+                    sed -i 's/driver = smtp/driver = smtp\n.include_if_exists \/etc\/exim.dkim.conf/g' /etc/exim.conf
+                    echo "* Restarting Exim ..."
+                    service exim restart 2>&1 >/dev/null
+                    echo "* Create directadmin.conf backup ..."
+                    cd /usr/local/directadmin; cp -f conf/directadmin.conf conf/directadmin.conf.backup; echo 'dkim=1' >> conf/directadmin.conf;
+                    echo "* Adding DKIM to directadmin.conf ..."
+                    cd /usr/local/directadmin; echo 'dkim=1' >> conf/directadmin.conf;
+                    echo "* Restarting Directadmin ..."
+                    service directadmin restart 2>&1 >/dev/null
+                    echo "* Adding DKIM to existing domain ..."
+                    echo "action=rewrite&value=dkim" >> /usr/local/directadmin/data/task.queue
+                    echo "+ DKIM added to exim successfully."
+                fi
+                #
+            else
+                echo "exim does not support DKIM, re-compile exim. https://help.directadmin.com/item.php?id=569"
+            fi
+
+
+        else
+            mailStatus
         fi
     }
 
@@ -424,6 +458,15 @@ pop3_config_path=/etc/exim.conf
         fi
     }
 
+    mysqlRouter(){
+        if [[ ${BASH_ARGV[0]} == "--secure" ]]
+        then
+            echo "under construction..."
+        else
+            mysqlStatus
+        fi
+    }
+
     showHelp(){
         echo -e "\n"
         echo "Usage: daShield [OPTION]"
@@ -442,6 +485,14 @@ pop3_config_path=/etc/exim.conf
         echo "Webserver Tools:"
         echo " --webserver                          Show Webserver status"
         echo " --webserver --install-mod-security   Install mod_security"
+        echo -e "\n"
+        echo "Mysql Tools :                         "
+        echo " --mysql                              Show mysql status"
+        echo " --mysql --secure                     Secure mysql configuration"
+        echo -e "\n"
+        echo "Mail Tools:"
+        echo " --mail                               Show Mailserver status"
+        echo " --mail --install-dkim                Install Dkim"
         echo -e "\n"
         echo "Miscellaneous:"
         echo " -s, --show-status                    Show server status"
@@ -465,8 +516,16 @@ while [ "$1" != "exit" ]; do
                                 webserverRouter
                                 exit
                                 ;;
+        --mysql )		        shift
+                                mysqlRouter
+                                exit
+                                ;;
         --directadmin )         shift
                                 directadminRouter
+                                exit
+                                ;;
+        --mail )         shift
+                                mailRouter
                                 exit
                                 ;;
         * )                     showHelp
