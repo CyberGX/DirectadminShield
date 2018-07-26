@@ -450,9 +450,31 @@ pop3_config_path=/etc/exim.conf
                 echo -e "\n"
             fi
 
-        elif [ ${BASH_ARGV[0]} == "--double-php" ]
+        elif [ ${BASH_ARGV[0]} == "--enbale-letsencrypt" ]
         then
-            echo "test"
+            directadmin_config_letsencrypt=$(get_config_variable "letsencrypt" $directadmin_config_path)
+            directadmin_config_ssl_sni=$(get_config_variable "letsencrypt" $directadmin_config_path)
+
+            # Edit Config File
+            echo "* Enable SSL SNI & Letsecnrypt ..."
+            config_editor "enable_ssl_sni" "1" $directadmin_config_path
+            config_editor "letsencrypt" "1" $directadmin_config_path
+
+            # Restart Directadmin
+            echo "* Restarting Directadmin ..."
+            echo "action=directadmin&value=restart" >> /usr/local/directadmin/data/task.queue; /usr/local/directadmin/dataskq d2000
+
+            # Add the /.well-known Alias:
+            echo "* Add the /.well-known Alias ..."
+            cd /usr/local/directadmin/custombuild; ./build rewrite_confs
+
+            # Run CustomBuild to install letsencrypt
+            echo "* Run CustomBuild to install letsencrypt"
+            cd /usr/local/directadmin/custombuild; ./build update; ./build letsencrypt
+            
+            echo "+ Letsencrypt enabled succesfully."
+            echo -e "\n"
+
         else
             directadminStatus
         fi
@@ -481,6 +503,7 @@ pop3_config_path=/etc/exim.conf
         echo "Directadmin Tools:"
         echo "--directadmin                         Show Directadmin status"
         echo "--directadmin --change-port           Change directadmin port"
+        echo "--directadmin --enbale-letsencrypt    Enable letsencrypt feature"
         echo -e "\n"
         echo "Webserver Tools:"
         echo " --webserver                          Show Webserver status"
