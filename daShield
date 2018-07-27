@@ -450,15 +450,17 @@ pop3_config_path=/etc/exim.conf
                 echo -e "\n"
             fi
 
-        elif [ ${BASH_ARGV[0]} == "--enbale-letsencrypt" ]
+        elif [ ${BASH_ARGV[0]} == "--enable-letsencrypt" ]
         then
             directadmin_config_letsencrypt=$(get_config_variable "letsencrypt" $directadmin_config_path)
-            directadmin_config_ssl_sni=$(get_config_variable "letsencrypt" $directadmin_config_path)
+            directadmin_config_ssl_sni=$(get_config_variable "enable_ssl_sni" $directadmin_config_path)
+            directadmin_config_ssl=$(get_config_variable "SSL" $directadmin_config_path)
 
             # Edit Config File
             echo "* Enable SSL SNI & Letsecnrypt ..."
             config_editor "enable_ssl_sni" "1" $directadmin_config_path
             config_editor "letsencrypt" "1" $directadmin_config_path
+            config_editor "SSL" "1" $directadmin_config_path
 
             # Restart Directadmin
             echo "* Restarting Directadmin ..."
@@ -474,6 +476,24 @@ pop3_config_path=/etc/exim.conf
             
             echo "+ Letsencrypt enabled succesfully."
             echo -e "\n"
+
+        elif [ ${BASH_ARGV[0]} == "--enable-host-freessl" ]
+        then
+
+            echo -e "\n"
+            read -p '* Your Hostname : ' my_hostname
+            # get hostname from conf
+            echo "${$my_hostname}: admin" >> /etc/virtual/domainowners
+
+            cd /usr/local/directadmin/scripts; ./letsencrypt.sh request_single $my_hostname 4096
+
+            echo "carootcert=/usr/local/directadmin/conf/carootcert.pem" >> $directadmin_config_path
+            echo "force_hostname=${$my_hostname}" >> $directadmin_config_path
+            echo "ssl_redirect_host=${$my_hostname}" >> $directadmin_config_path
+
+            service directadmin restart
+
+            echo "+ SSL enabled succesfully please add A record for ${$my_hostname}."
 
         else
             directadminStatus
@@ -495,31 +515,32 @@ pop3_config_path=/etc/exim.conf
         echo "Example: daShield -s"
         echo -e "\n"
         echo "PHP Tools:"
-        echo " --php                                Show PHP status"
-        echo " --php --secure                       Secure PHP configuration"
-        echo " --php --double-php                   Add second php to directadmin"
-        echo " --php --set-timezone                 Set PHP timezone"
+        echo " --php                                    Show PHP status"
+        echo " --php --secure                           Secure PHP configuration"
+        echo " --php --double-php                       Add second php to directadmin"
+        echo " --php --set-timezone                     Set PHP timezone"
         echo -e "\n"
         echo "Directadmin Tools:"
-        echo "--directadmin                         Show Directadmin status"
-        echo "--directadmin --change-port           Change directadmin port"
-        echo "--directadmin --enbale-letsencrypt    Enable letsencrypt feature"
+        echo "--directadmin                             Show Directadmin status"
+        echo "--directadmin --change-port               Change directadmin port"
+        echo "--directadmin --enbale-letsencrypt        Enable letsencrypt feature"
+        echo "--directadmin --enable-host-freessl       Enable letsencrypt feature"
         echo -e "\n"
         echo "Webserver Tools:"
-        echo " --webserver                          Show Webserver status"
-        echo " --webserver --install-mod-security   Install mod_security"
+        echo " --webserver                              Show Webserver status"
+        echo " --webserver --install-mod-security       Install mod_security"
         echo -e "\n"
         echo "Mysql Tools :                         "
-        echo " --mysql                              Show mysql status"
-        echo " --mysql --secure                     Secure mysql configuration"
+        echo " --mysql                                  Show mysql status"
+        echo " --mysql --secure                         Secure mysql configuration"
         echo -e "\n"
         echo "Mail Tools:"
-        echo " --mail                               Show Mailserver status"
-        echo " --mail --install-dkim                Install Dkim"
+        echo " --mail                                   Show Mailserver status"
+        echo " --mail --install-dkim                    Install Dkim"
         echo -e "\n"
         echo "Miscellaneous:"
-        echo " -s, --show-status                    Show server status"
-        echo " -h, --help                           Display this help text and exit"
+        echo " -s, --show-status                        Show server status"
+        echo " -h, --help                               Display this help text and exit"
         echo -e "\n"
     }
 
@@ -559,7 +580,6 @@ done
 
 # Regular updates of system services, libraries and scripts.
 # cd /usr/local/directadmin/custombuild; ./build update; ./build all d
-
 
 # Change Directadmin Options
 # set_directadmin_option "email" $email/
